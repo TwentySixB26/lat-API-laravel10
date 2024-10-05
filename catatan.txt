@@ -1,0 +1,435 @@
+instlasi laravel 10 untuk membuat suatu API 
+
+1. ketik composer create-project laravel/laravel:^10 lat-api 
+
+
+2. sukses di instal
+
+
+===================================================================================================
+
+
+membuat database 
+
+
+1. klik file .env dan setting terlebih dahulu 
+
+
+2. setting Database menjadi namanya seperti ini  :
+DB_DATABASE=api-laravel10
+
+
+3. buat database, bisa table plus atau php my admin 
+
+
+
+===============================================================================
+
+
+membuat model dan migration
+
+1. buka terminal,buat model dan migration nya :
+php artisan make:model Buku -m
+
+
+2. buka file Buku.php dan berikan code ini :
+protected $table = "buku" ;     //untuk menentukan nama tabelnya 
+protected $fillable = ['judul', 'pengarang' , 'tanggal_publikasi'] ; 
+
+
+3. buka file ...create_bukus_table.php ubah scema nya dari bukus menjadi buku seperti ini :
+Schema::create('buku', function (Blueprint $table))
+
+
+4. pada file ...create_bukus_table.php tambahkan juga code untuk membuat scema isinya :
+$table->id();
+$table->string('judul') ;
+$table->string('pengarang') ;
+$table->string('tanggal_publikasi') ;
+$table->timestamps();
+
+
+5. lakukan migrasi :
+php artisan migrate
+
+
+=========================================================================================
+
+
+membuat seeder 
+
+1. buka terminal dan ketik :
+php artisan make:seeder BukuSeeder 
+
+
+2. buku file BukuSeeder.php dan tambahkan code : 
+$faker = \Faker\Factory::create('id_ID') ;
+        for ($i=0; $i < 10 ; $i++) { 
+            Buku::create(
+                [
+                    'judul' =>$faker->sentence() ,
+                    'pengarang' => $faker->name(),
+                    'tanggal_publikasi' => $faker->date(),
+                ]
+            ) ;
+        } 
+
+
+
+3. buku terminal dan jalankan : 
+php artisan db:seed --class=BukuSeeder
+
+
+4. maka data akan random atau data dummy akan masuk ke dalam database
+
+
+
+
+===========================================================================================
+
+
+
+Membuat controller 
+
+1. buka terminal dan ketik : 
+php artisan make:controller Api\BukuController --api
+
+kenapa diberi --api? karena controller tersebut akan digunakan untuk mengelola api 
+
+
+
+=======================================================================================
+
+
+Perbaikan method index untuk menampilkan semua data api
+
+
+1. buka file BukuController.php dan masuk ke method index untuk menangani masalah tampilan,berikan code : 
+
+$data = Buku::orderBy('judul' , 'asc')->get() ;  //asc atau asscending digunakan akan data urut dari a-z 
+return response()->json([
+    'status' => true , 
+    'message' => 'data ditemukan',
+    'data' => $data
+],200) ;
+
+
+
+2. buka apk postman, cari menu workspaces dan create workspaces 
+
+
+3. pilih blank workspaces klik next dan berikan namanya menjadi :
+laravel-api 
+
+
+4. sukses dibuat 
+
+
+5. buka api.php dan tambahkan code ini untuk menagani route baru:
+Route::get('buku',[BukuController::class,'index']) ; 
+
+
+
+6. buka apk postman, klik new dimenu yang ada diatas kiri , pilih menu HTTP 
+
+
+7. buka browser dan ketikan link ini untuk mengecek apakah api berjalan dengan baik
+http://127.0.0.1:8000/api/buku
+
+untuk /buku itu tergantung dari apa nama database yang dibuat sebelumnya 
+
+
+8. buka apk postman dan coba link yang sebelumnya ke dalam mesin pencarian (enter URL or paste your text) 
+
+
+9. klik "CTRL + S" , isi collection nama nya menjadi "laravel-api" 
+maka akan dibuat foldernya dengan nama laravel-api
+
+
+10. nama file sebelum diganti adalah "http://127.0.0.1:8000/api/buku" agar tidak bingung ganti menjadi "INDEX"
+
+
+
+==========================================================================================================
+
+
+Perbaikan method show untuk menampilkan detail data api
+
+
+1. buku BukuController.php dan masuk ke method show lalu ketikan code,seperti ini contoh method show beserta isinya  :
+
+public function show(string $id)
+    {
+        $data = Buku::find($id) ; 
+        if ($data) {
+            return response()->json([
+                'status' => true , 
+                'message' => 'data ditemukan',
+                'data' => $data
+            ]) ; 
+        } else {
+            return response()->json([
+                'staus' => false ,
+                'message' => 'data tidak ditemukan'
+            ]) ;
+        }
+    
+    }
+
+
+
+
+2. buku api.php agar show bisa ditangani :
+Route::get('buku/{id}',[BukuController::class,'show']) ; 
+
+
+
+3. buka post man agar dapat mengcek show detail nya dengan cara "add request" baru, sama seperti membuat file baru 
+
+
+4. cari menu seperti mesin pencarian dan ketikan :
+http://127.0.0.1:8000/api/buku/2
+
+
+
+5. sukses 
+
+
+6. ganti nama file tadi yang telah dibuat pada postman menjadi :
+SHOW 
+
+
+===========================================================================================
+
+Perbaikan method store untuk menambah data api
+
+
+1. buka BukuController.php masuk ke method store dan seperti ini contoh code nya :
+
+$dataBuku  = new Buku ; 
+$dataBuku->judul = $request->judul ; 
+$dataBuku->pengarang = $request->pengarang ; 
+$dataBuku->tanggal_publikasi = $request->tanggal_publikasi ; 
+
+$post = $dataBuku->save() ; 
+return response()->json([
+        'status' => true , 
+        'message' => 'Sukses memasukan data'
+        ]) ; 
+
+
+
+2. buka api.php untuk menangani route nya :
+Route::post('buku',[BukuController::class,'store']) ;
+
+
+
+3. buku postman dan buat request baru,dan berikan ini pada mesin pencarian :
+http://127.0.0.1:8000/api/buku/40
+
+
+
+4. ganti method yang ada menu sebelah kiri menjadi post 
+
+
+5. ganti nama file nya menjadi :
+STORE
+
+
+
+6. klik menu "body" cari radio button atau pilihan "x-www-form-urlencode" 
+
+
+
+7. ada menu key dan value,isikan disitu untuk key diisi untuk mengirim ke database seperti judul,pengarang,tanggal_publikasi sedangkan value ada isi seperti judul isinya "judul percobaan"
+seperti ini contohnya :
+
+Key                     Value 
+judul                   ada apa dengan laravel
+pengarang               bayu 
+tanggal_publikasi       2024-10-03
+
+
+
+8. klik send,maka data akan masuk 
+
+
+======================================================================
+
+melakukan validasi ketika data dikirimkan 
+
+
+
+1. buka BukuController.php dan perbaiki code sebelumnya menjadi seperti ini :
+$rules = [
+            'judul' => 'required' ,
+            'pengarang' => 'required',
+            'tanggal_publikasi' => 'required|date'
+        ] ; 
+
+        $validator = Validator::make($request->all(),$rules) ;
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false , 
+                'message' => 'Gagal memasukan data' ,
+                'data' => $validator->errors()
+            ]) ; 
+        }
+
+
+        $dataBuku  = new Buku ; 
+        $dataBuku->judul = $request->judul ; 
+        $dataBuku->pengarang = $request->pengarang ; 
+        $dataBuku->tanggal_publikasi = $request->tanggal_publikasi ; 
+
+        $post = $dataBuku->save() ; 
+
+        return response()->json([
+            'status' => true , 
+            'message' => 'Sukses memasukan data'
+        ]) ; 
+
+
+
+
+
+2. maka data akan divalidasi terlebih dahulu sebelum dikirim ke db,untuk mencobanya sama seperti case sebelumnya 
+
+
+
+==========================================================================================
+
+
+perbaikan method update untuk menambah data api
+
+
+1. buka file BukuController.php dan masuk ke method update dan seperti ini contoh code nya :
+
+        $dataBuku  = Buku::find($id);
+
+        //jika data yang dicari berdasarkan id tertentu tidak ada
+        if (empty($dataBuku)) {
+            return response()->json([
+                'status' =>false ,
+                'message' => 'data tidak ditemukan'
+            ],404) ; 
+        }
+
+        $rules = [
+            'judul' => 'required' ,
+            'pengarang' => 'required',
+            'tanggal_publikasi' => 'required|date'
+        ] ; 
+
+        $validator = Validator::make($request->all(),$rules) ;
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false , 
+                'message' => 'Gagal melakukan update data' ,
+                'data' => $validator->errors()
+            ]) ; 
+        }
+
+
+ 
+        $dataBuku->judul = $request->judul ; 
+        $dataBuku->pengarang = $request->pengarang ; 
+        $dataBuku->tanggal_publikasi = $request->tanggal_publikasi ; 
+
+        $post = $dataBuku->save() ; 
+
+        return response()->json([
+            'status' => true , 
+            'message' => 'Sukses melakukan update data'
+        ]) ;
+
+
+
+2. buka api.php untuk menangani route nya 
+Route::put('buku/{id}',[BukuController::class,'update']) ;
+
+
+
+3. buka postman dan buat request baru,dan berikan ini pada mesin pencarian :
+http://127.0.0.1:8000/api/buku/11
+
+
+
+4. ganti method yang ada menu sebelah kiri menjadi put
+
+
+5. ganti nama file nya menjadi :
+UPDATE
+
+
+6. klik menu "body" cari radio button atau pilihan "x-www-form-urlencode" 
+
+
+
+7. ada menu key dan value,isikan disitu untuk key diisi untuk mengirim ke database seperti judul,pengarang,tanggal_publikasi sedangkan value ada isi seperti judul isinya "judul percobaan"
+seperti ini contohnya :
+
+Key                     Value 
+judul                   ada apa dengan laravel 2
+pengarang               bayu aji
+tanggal_publikasi       2024-10-03
+
+
+8. klik send , dan data sukses di update
+
+
+
+============================================================================================
+
+Perbaikan method destroy untuk menghapus data di dalam api
+
+
+1. buka file BukuController.php dan masuk ke method destroy dan seperti ini contoh code nya :
+$dataBuku  = Buku::find($id);
+
+        //jika data yang dicari berdasarkan id tertentu tidak ada
+        if (empty($dataBuku)) {
+            return response()->json([
+                'status' =>false ,
+                'message' => 'data tidak ditemukan'
+            ],404) ; 
+        }
+
+        
+        $post = $dataBuku->delete() ; 
+
+        return response()->json([
+            'status' => true , 
+            'message' => 'Sukses delete data'
+        ]) ;
+
+
+
+
+2. buka api.php untuk menangani route nya 
+Route::delete('buku/{id}',[BukuController::class,'destroy']) ;
+
+
+3. buka postman dan buat request baru,dan berikan ini pada mesin pencarian :
+http://127.0.0.1:8000/api/buku/11
+
+
+
+4. ganti method yang ada menu sebelah kiri menjadi delete
+
+
+5. ganti nama file nya menjadi :
+delete
+
+
+6. klik send , sukses 
+
+
+
+
+
+
+
+

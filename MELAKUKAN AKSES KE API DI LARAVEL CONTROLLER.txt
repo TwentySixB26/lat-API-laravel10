@@ -1,0 +1,362 @@
+
+Membuat controller 
+
+1. buka terminal dan buat controller :
+php artisan make:controller BukuController --resource
+
+--resource digunakan untuk menciptakan beberapa fungsi langsung, contohnya create,update,delete 
+
+
+
+2. buka file web.php untuk menangani masalah route nya :
+Route::get('/buku', [BukuController::class,'index']);
+
+
+
+3. buku BukuController.php , bukan yang api!! dan masuk ke method index() untuk percobaan berikan code :
+echo "Hello API" ;
+
+
+
+================================================================================== 
+
+mengecek class guzzleHTTP 
+
+GuzzleHTTP adalah pustaka klien HTTP yang memungkinkan Anda melakukan permintaan HTTP dari aplikasi PHP. Di Laravel, GuzzleHTTP sering digunakan untuk mengintegrasikan API eksternal atau melakukan permintaan ke layanan lain.
+
+
+1. cara mengecek guzzleHTTP sudah ada atau belum adalah, buka file composer.json cari dibagian require seperti ini contohnya :
+
+"require": {
+        "guzzlehttp/guzzle": "^7.2",
+    },
+
+
+
+2. jika tidak ada maka harus install terlebih dahulu caranya : 
+composer require guzzlehttp/guzzle
+
+
+================================================================================== 
+
+
+Tambah server 
+
+1. buka file BukuController bukan yang API!!! , dan masuk kembali ke method index() dan perbaiki codenya seperti ini :
+
+public function index()
+    {
+        $client = new Client() ; 
+        $url = "http://127.0.0.1:8000/api/buku" ; 
+        $response = $client->request('GET' , $url) ;
+
+        dd($response) ; 
+    }
+
+
+
+
+tapi ketika di akses web yang bagian front end nya akan melakukan load lama sekali,karena port yang digunkan untuk API dan Front end sama, untuk mengatasinya adalah caranya adalah : 
+
+1. buka folder lat-api mengunakan git bash here dan ketikan :
+php artisan serve --port=8001
+
+
+2. sukses, akses bagian front end nya kembali 
+
+
+
+================================================================================== 
+
+
+Display semua data
+
+1. buka file BukuController.php dan tambahkan code ini pada method index():
+
+$content =  $response->getBody()->getContents() ; 
+$contentArray = json_decode($content,true) ; 
+$data = $contentArray['data'] ; 
+return view('buku/index',['data' => $data]) ; 
+
+
+penjelasan :
+a. $response->getBody()->getContents():
+- Bagian ini mengambil isi dari respons HTTP yang diterima.
+- getBody() mengembalikan objek yang berisi isi respons, dan getContents() mengeluarkan konten tersebut sebagai string.
+- Jadi, $content berisi data mentah (biasanya dalam format JSON) yang dikembalikan oleh server.
+
+
+b. json_decode($content, true):
+- Fungsi ini mengubah string JSON yang ada di $content menjadi array PHP.
+- Parameter kedua (true) menunjukkan bahwa hasil decode harus berupa array asosiatif, bukan objek.
+
+
+c. $contentArray['data']:
+
+- Di sini, kita mengakses elemen dengan kunci 'data' dari array hasil decode JSON ($contentArray).
+- Variabel $data sekarang berisi nilai dari kunci 'data' dalam respons JSON, yang dapat berupa array atau nilai tunggal tergantung pada struktur JSON yang dikembalikan.
+
+
+
+
+
+2. buat folder buku yang didalamnya terdapat file view dengan nama index.blade.php 
+
+
+
+
+3. isikan file tersebut dengan code untuk menampilkan view nya 
+
+
+
+4. ganti data defaultnya dengan cara,buka file index.blade.php dan perbaiki code menjadi beserta looping untuk dapat menamppilkan data yang banyak :
+<?php $i=1 ?>
+    @foreach ($data as $item)
+        <tr>
+            <td>{{ $i }} </td>
+            <td>{{ $item['judul'] }}</td>
+            <td>{{ $item['pengarang'] }}</td>
+            <td>{{ date('d/m/Y' , strtotime($item['tanggal_publikasi'])) }}</td>
+            <td>
+                <a href="" class="btn btn-warning btn-sm">Edit</a>
+                <a href="" class="btn btn-danger btn-sm">Del</a>
+            </td>
+        </tr>
+    <?php $i++?>
+    @endforeach
+
+
+
+
+======================================================================================
+
+
+cara menambahkan data api lewat form 
+
+1. buka file web.php dan berikan route nya seperti ini :
+
+Route::post('/buku', action: [BukuController::class,'store']);
+
+
+
+2. buka folde buku/index.blade.php dan tambahkan @csrf  didalam form 
+
+
+
+3. buka file BukuController.php bukan yang di folder API!! masuk ke method store tambahkan code ini :
+
+        $judul = $request->judul ; 
+        $pengarang = $request->pengarang ; 
+        $tanggal_publikasi = $request->tanggal_publikasi ; 
+
+        $parameter = [
+            'judul' => $judul ,
+            'pengarang' => $pengarang,
+            'tanggal_publikasi' => $tanggal_publikasi
+        ] ;
+
+
+        $client = new Client() ; 
+        $url = "http://127.0.0.1:8000/api/buku" ; 
+        $response = $client->request('POST' , $url,[
+            'headers' => ['Content-type' =>'application/json'] ,
+            'body' => json_encode($parameter) 
+        ]) ;
+
+        $content =  $response->getBody()->getContents() ;       //mengambil isi data dari respons HTTP dan masih dalam bentuk json
+        $contentArray = json_decode($content,true) ;        // mendecode string JSON menjadi array PHP
+        // $data = $contentArray['data'] ;         // mengakses nilai tertentu dari array tersebut (dalam hal ini, elemen yang bernama 'data'). didalam $contentArray terdapat beberapa isi salah satunya 'data'
+        // return view('buku/index',['data' => $data]) ;
+        // print_r($data) ; 
+
+
+        if($contentArray['status']!= true){
+            $error = $contentArray['data'] ; 
+            return redirect('/buku')->withErrors($error)->withInput() ; 
+        }else {
+            return redirect('/buku')->with('success', 'berhasil memasukan data') ; 
+        }
+
+
+
+
+4. buka file index.blade.php untuk menangkap error nya dan ketika succes, simpan sebelum tag form 
+{{-- jika ada eror ketika mengisi form maka akan muncul alert --}}
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            {{-- errors all digunakan untuk mengambil semua eror,error dalam bentuk array oleh sebab itu harus dilakukan foreach akan diproses satu satu  --}}
+            @foreach ($errors->all() as $item)
+                <li>{{ $item }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+
+
+
+
+
+
+==============================================================================================
+
+Edit Data
+
+
+1. buka file index.blade.php dan masuk ke button edit dan arahkan url,seperti ini contohnya :
+<a href="/buku/{{$item['id']  }}" class="btn btn-warning btn-sm">Edit</a>
+
+
+2. buka file web.php dan berikan route nya untuk menangkap fugsi edit :
+Route::get('/buku/{id}', action: [BukuController::class,'edit']);
+
+
+3. buka file BukuController.php Bukan yang API!!! dan masuk ke method edit,seperti ini contoh code nya:
+        
+        //untuk mendapatkan client 
+        $client = new Client() ; 
+
+        //url agar dapat terhubung ke api 
+        $url = "http://127.0.0.1:8000/api/buku/$id" ;
+        
+        //menghubungkan client kepada API mengunakan url 
+        $response = $client->request('GET' , $url) ;
+
+
+        //mengambil isi data dari respons HTTP dan masih dalam bentuk json
+        $content =  $response->getBody()->getContents() ;
+        
+        // mendecode string JSON menjadi array PHP
+        $contentArray = json_decode($content,true) ;      
+        
+        //jika tidak ada id tertentu maka statusnya akan bernilai false dan mengembalikan message berupa error
+        if ($contentArray['status'] == false) {
+            $error= $contentArray['message'] ; 
+            return redirect('/buku')->withErrors($error) ; 
+        } else {
+            $data = $contentArray['data'] ; 
+            return view('/buku/index', ['data' => $data]) ; 
+        }
+
+
+
+
+===========================================================================================
+
+
+UPDATE DATA 
+
+1. buka file web.php untuk menangani route nya 
+Route::put('/buku/{id}', action: [BukuController::class,'update']);
+
+
+2. buka file index.blade.php
+untuk melakukan update pada tag form harus diberi method put dan akan dijalankan hanya ketika dalam keadaan edit seperti ini contohnya :
+
+@if (Route::current()->uri == 'buku')
+    @method('put')
+@endif 
+
+
+
+3. buka file BukuController.php dan masuk ke method update dan berikan code seperti ini :
+public function update(Request $request, string $id)
+    {
+        // mengambil parameter atau isi dari form input 
+        $judul = $request->judul ; 
+        $pengarang = $request->pengarang ; 
+        $tanggal_publikasi = $request->tanggal_publikasi ; 
+
+        // menjadikan semua yang telah ditangkap oleh input menjadi array
+        $parameter = [
+            'judul' => $judul ,
+            'pengarang' => $pengarang,
+            'tanggal_publikasi' => $tanggal_publikasi
+        ] ;
+
+        //untuk mendapatkan client 
+        $client = new Client() ; 
+
+        //url agar dapat terhubung ke api 
+        $url = "http://127.0.0.1:8000/api/buku$id" ; 
+
+        //mengirimkan data mengunakan POST melalui $url dan dikirim ke 'headers' beserta 'body'
+        $response = $client->request('PUT' , $url,[
+            'headers' => ['Content-type' =>'application/json'] ,
+            'body' => json_encode($parameter)   //dilakukan encode agar data berubah menjadi json bukan array
+        ]) ;
+
+        //mengambil isi data dari respons HTTP dan masih dalam bentuk json
+        $content =  $response->getBody()->getContents() ;       
+
+        // mendecode string JSON menjadi array PHP
+        $contentArray = json_decode($content,true) ;     
+
+
+        //jika data gagal maka statusnya akan false maka akan menjalankan fungsi ini
+        if($contentArray['status']!= true){
+            //mengambil/mengangkap isi data 
+            $error = $contentArray['data'] ;    
+
+            //melakukan redirect ke '/buku', withErrors akan mengirimkan error ke halaman yang dilakukan redirect begitu juga dengan withInput  
+            return redirect('/buku')->withErrors($error)->withInput() ; 
+        }else {
+            //pesan ketika success
+            return redirect('/buku')->with('success', 'berhasil update data') ; 
+        }
+    }
+
+
+
+
+=============================================================================================
+
+
+Hapus data 
+
+1. buka file index.blade.php dan tambahkan code ini atau buat form untuk delete seperti ini :
+
+<form action="/buku/{{$item['id']  }}" method="post" onsubmit="return confirm('apakah kamu yakin ingin menghapus data?')" class="d-inline">
+    @csrf 
+    @method('delete')
+    <button type="submit" name="submit" class="btn btn-danger btn-sm">Del</button>
+</form>
+
+
+
+
+2. buka file web.php dan berikan route ke delete :
+Route::delete('/buku/{id}', action: [BukuController::class,'destroy']);
+
+
+3. buka file BukuController.php dan masuk ke method destroy untuk menangani delete data seperti ini : 
+public function destroy(string $id)
+    {
+        $client = new Client() ; 
+
+        //url agar dapat terhubung ke api 
+        $url = "http://127.0.0.1:8000/api/buku/$id" ; 
+
+        //mengirimkan data mengunakan POST melalui $url dan dikirim ke 'headers' beserta 'body'
+        $response = $client->request('DELETE' , $url,) ;
+
+        //mengambil isi data dari respons HTTP dan masih dalam bentuk json
+        $content =  $response->getBody()->getContents() ;       
+
+        // mendecode string JSON menjadi array PHP
+        $contentArray = json_decode($content,true) ;     
+
+
+        //jika data gagal maka statusnya akan false maka akan menjalankan fungsi ini
+        if($contentArray['status']!= true){
+            //mengambil/mengangkap isi data 
+            $error = $contentArray['data'] ;    
+
+            //melakukan redirect ke '/buku', withErrors akan mengirimkan error ke halaman yang dilakukan redirect begitu juga dengan withInput  
+            return redirect('/buku')->withErrors($error)->withInput() ; 
+        }else {
+            //pesan ketika success
+            return redirect('/buku')->with('success', 'berhasil hapus  data') ; 
+        }
+    }
